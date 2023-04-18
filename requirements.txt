@@ -3,4 +3,4 @@ numpy
 streamlit
 streamlit_option_menu
 pydeck
-sklearn
+scikit-learn
