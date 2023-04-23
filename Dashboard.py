@@ -96,3 +96,4 @@ if selected != "Analytics":
         st.line_chart(demands)
 else:
     st.title("Hola")
+    st.text('Wowowow So')
