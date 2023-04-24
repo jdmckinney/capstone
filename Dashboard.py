@@ -97,6 +97,6 @@ if selected != "Analytics":
 else:
     st.title("Hola")
     st.text('Wowowow So pls')
-    month_data = data.groupy('month').mean()
+    month_data = data.groupby('month').mean()
     st.bar_chart(month_data, x='month', y='demand')
     st.bar_chart(month_data, x='month', y='temp')
