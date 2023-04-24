@@ -11,7 +11,7 @@ from sklearn.ensemble import RandomForestRegressor
 @st.cache_resource
 def generate_model():
     data = pd.read_csv('clean_data.zip')
-    X = data.drop(columns=['demand'])
+    X = data.drop(columns=['demand', 'month', 'holiday', 'weekday'])
     y = data[['demand']].copy()
     model = RandomForestRegressor()
     model.fit(X, y)
@@ -82,7 +82,7 @@ if selected != "Analytics":
         st.pydeck_chart(deck)
 
     elif selected == "Day Summary":
-        mean = 50
+        mean = st.slider('Station Average', 0, 200, 40)
 
         arr = []
         for hour in range(24):
@@ -96,4 +96,7 @@ if selected != "Analytics":
         st.line_chart(demands)
 else:
     st.title("Hola")
-    st.text('Wowowow So')
+    st.text('Wowowow So pls')
+    month_data = data.groupy('month').mean()
+    st.bar_chart(month_data, x='month', y='demand')
+    st.bar_chart(month_data, x='month', y='temp')
