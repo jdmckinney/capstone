@@ -3,8 +3,8 @@ import pandas as pd
 import numpy as np
 import pydeck as pdk
 
+from PIL import Image
 from streamlit_option_menu import option_menu
-
 from sklearn.ensemble import RandomForestRegressor
 
 
@@ -29,32 +29,39 @@ station = get_stations()
 
 selected = option_menu(
     menu_title=None,
-    options=["City Overview", "Day Summary", "Analytics"],
+    options=["City Overview", "Day Summary", "Analysis"],
     icons=["app",  "graph-up", "bar-chart"],
     default_index=0,
     orientation="horizontal",
 )
 
 
-if selected != "Analytics":
+if selected != "Analysis":
 
     col1, col2, col3 = st.columns(3)
     with col1:
         isWorkday = 1 if st.checkbox("Working Day?") else 0
     with col2:
-        rain = st.slider('rain', 0.0, 1.0, 0.0)
+        weathers = {'Clear': 0, 'Cloudy': 0.25, 'Muggy': 0.4, 'Foggy': 0.55, 'Sprinkling': 0.7,
+                    'Light Rain/Snow': 0.9, 'Moderate Rain/Snow': 0.95, 'Heavy Rain/Snow': 1,
+                    'Stormy': 1}
+        rain = weathers[st.select_slider(
+            'Weather', options=weathers.keys(), value='Clear')]
     with col3:
-        temp = st.slider('Temperature', 0.0, 104.0, 75.0) / 104.0
+        temp = st.slider('"Feels Like" Temperature (Fahrenheit)',
+                         10.0, 104.0, 75.0) / 104.0
 
     if selected == "City Overview":
 
-        hour = st.slider('hour', 0, 23, 12)/23.0
+        hour = st.slider('Hour of Day', 0, 23, 12)/23.0
 
-        demand_mult = model.predict([[isWorkday, hour, temp, rain]])
+        demand_mult = model.predict([[hour, isWorkday, temp, rain]])
 
         station['demand'] = station['mean'] * demand_mult
 
-        station['demand'] = station['demand'] / 100
+        hour_total = int(station.demand.sum())
+
+        station['col_height'] = station['demand'] / 10
 
         deck = pdk.Deck(
             map_style=None,
@@ -69,10 +76,10 @@ if selected != "Analytics":
                     'ColumnLayer',
                     data=station,
                     get_position='[lon,lat]',
-                    get_elevation='demand',
+                    get_elevation='col_height',
                     elevation_scale=1000,
                     radius=250,
-                    get_fill_color=['demand * 255', 0, 0, 255],
+                    get_fill_color=['col_height * 255', 0, 0, 255],
                     pickable=False,
                     auto_highlight=False,
                 ),
@@ -81,22 +88,44 @@ if selected != "Analytics":
 
         st.pydeck_chart(deck)
 
+        st.title("Hour Total: " + str(hour_total))
+
     elif selected == "Day Summary":
-        mean = st.slider('Station Average', 0, 200, 40)
+        mean = st.slider('Station Hourly Average', 0, 30, 10)
 
         arr = []
         for hour in range(24):
-            arr.append([isWorkday, hour/23.0, temp, rain])
+            arr.append([hour/23.0, isWorkday, temp, rain])
         day = pd.DataFrame(
-            arr, columns=['isWorkday', 'time', 'temp', 'weather'])
+            arr, columns=['hour', 'isWorkday', 'temp', 'weather'])
 
         demands = model.predict(day) * mean
         demands = [int(x) for x in demands]
         # st.bar_chart(demands)
         st.line_chart(demands)
+
+        d_sum = 0
+        for d in demands:
+            d_sum += d
+        st.title("Day Total: " + str(d_sum))
 else:
-    st.title("Hola")
-    st.text('Wowowow So pls')
-    month_data = data.groupby('month').mean()
-    st.bar_chart(month_data, x='month', y='demand')
-    st.bar_chart(month_data, x='month', y='temp')
+
+    month_data = pd.DataFrame()
+    month_data['Demand'] = data.groupby('month').demand.mean()
+    month_data['Temperature'] = data.groupby('month').temp.mean()
+
+    st.title("Average Demand by Month")
+    st.bar_chart(data.groupby('month').demand.mean())
+    st.title("Average Temperature by Month")
+    st.bar_chart(data.groupby('month').temp.mean())
+
+    weekdayTrends = Image.open("Images/WeekdayTrends.png")
+    workdayTrends = Image.open("Images/WorkdayTrends.png")
+    corr = Image.open("Images/Correlation.png")
+
+    st.title("Hourly Demand Trends of Weekdays")
+    st.image(weekdayTrends)
+    st.title("Hourly Demand Trends for Workdays")
+    st.image(workdayTrends)
+    st.title("Data Feature Correlation Matrix")
+    st.image(corr)
